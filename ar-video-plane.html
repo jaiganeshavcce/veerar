@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
     <title>AR Video Plane Experience</title>
     
     <!-- A-Frame and AR.js for AR capabilities -->
@@ -89,6 +89,7 @@
     <!-- Control Panel -->
     <div class="controls" id="controls" style="display: none;">
         <button class="control-btn active" id="playBtn" onclick="toggleVideo()">Play Video</button>
+        <button class="control-btn active" id="rotateBtn" onclick="toggleRotation()">Stop Rotation</button>
         <button class="control-btn" id="resetBtn" onclick="resetCamera()">Reset View</button>
     </div>
 
@@ -125,12 +126,12 @@
         <!-- Video Plane Entity -->
         <a-plane 
             id="video-plane"
-            width="4"
-            height="2.25"
-            position="0 1.6 -5"
-            rotation="0 0 0"
+            width="5.33"
+            height="3"
+            position="0 1.6 -3.5"
+            rotation="-15 0 0"
             material="shader: flat; src: #video-texture; side: double; transparent: false"
-            animation="property: rotation; to: 0 360 0; loop: true; dur: 30000; easing: linear">
+            animation__rotate="property: rotation; to: -15 360 0; loop: true; dur: 40000; easing: linear">
         </a-plane>
 
         <!-- Ambient Light -->
@@ -144,10 +145,12 @@
         const video = document.querySelector('#video-texture');
         const videoPlane = document.querySelector('#video-plane');
         const playBtn = document.querySelector('#playBtn');
+        const rotateBtn = document.querySelector('#rotateBtn');
         const loading = document.querySelector('#loading');
         const controls = document.querySelector('#controls');
         const instructions = document.querySelector('#instructions');
         let isPlaying = false;
+        let isRotating = true;
 
         // Wait for scene to load
         const scene = document.querySelector('a-scene');
@@ -206,6 +209,21 @@
             playBtn.textContent = 'Play Video';
             playBtn.classList.remove('active');
             console.log('Video paused');
+        }
+
+        // Toggle rotation
+        function toggleRotation() {
+            isRotating = !isRotating;
+            const plane = document.querySelector('#video-plane');
+            if (isRotating) {
+                plane.setAttribute('animation__rotate', 'property: rotation; to: -15 360 0; loop: true; dur: 40000; easing: linear');
+                rotateBtn.textContent = 'Stop Rotation';
+                rotateBtn.classList.add('active');
+            } else {
+                plane.removeAttribute('animation__rotate');
+                rotateBtn.textContent = 'Start Rotation';
+                rotateBtn.classList.remove('active');
+            }
         }
 
         // Reset camera view
