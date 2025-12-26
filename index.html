@@ -239,7 +239,7 @@
     <!-- 3D Model Viewer -->
     <model-viewer 
         id="airplane"
-        src="./plane_glb.glb" 
+        src="plane_glb.glb" 
         alt="Airplane 3D Model" 
         ar 
         ar-modes="webxr scene-viewer quick-look" 
@@ -292,10 +292,16 @@
     <div class="video-overlay" id="videoOverlay">
         <div class="video-container">
             <button class="close-video" onclick="closeVideo()">×</button>
-            <video id="planeVideo" controls crossorigin="anonymous">
-                <source src="https://drive.google.com/uc?export=download&id=1TXEJObwQ3G4QmKe9aK1KHhc3fujjwiyb" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
+            <iframe 
+                id="planeVideo"
+                width="100%" 
+                height="450" 
+                src="https://www.youtube.com/embed/WZgUUAfPrfc?rel=0" 
+                title="Airplane Video" 
+                frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                allowfullscreen>
+            </iframe>
         </div>
     </div>
 
@@ -336,24 +342,22 @@
             }
         }
 
-        // Play Video
+        // Play Video (YouTube iframe)
         function playVideo() {
             videoOverlay.style.display = 'flex';
-            planeVideo.currentTime = 0;
-            planeVideo.play();
             videoBtn.classList.add('active');
-            
-            // Auto-remove active state when video ends
-            planeVideo.addEventListener('ended', () => {
-                videoBtn.classList.remove('active');
-            });
+            // Reload iframe to restart video
+            const iframe = document.getElementById('planeVideo');
+            iframe.src = iframe.src.replace('?rel=0', '?autoplay=1&rel=0');
         }
 
         // Close Video
         function closeVideo() {
             videoOverlay.style.display = 'none';
-            planeVideo.pause();
             videoBtn.classList.remove('active');
+            // Stop video by removing autoplay
+            const iframe = document.getElementById('planeVideo');
+            iframe.src = iframe.src.replace('?autoplay=1&rel=0', '?rel=0');
         }
 
         // Close video when clicking outside
@@ -401,10 +405,7 @@
             }
         });
 
-        // Prevent default video controls behavior on mobile
-        planeVideo.addEventListener('play', () => {
-            console.log('Video playing');
-        });
+        // YouTube iframe doesn't need video event listeners
     </script>
 </body>
 </html>
