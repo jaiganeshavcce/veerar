@@ -46,12 +46,19 @@ This script automatically detects and uses Python or Node.js to start a local se
 
 ```
 veerar/
-├── index.html           # Main AR application
-├── plane_glb.glb        # 3D airplane model
-├── veer video.mp4       # Video content with audio
-├── start-server.bat     # Quick server launcher (Windows)
-└── README.md            # This file
+├── index.html              # Main AR application
+├── plane_glb.glb           # 3D airplane model
+├── veer video.mp4          # Video content with audio (local only - see note below)
+├── start-server.bat        # Quick server launcher (Windows)
+├── .gitignore              # Excludes large files from Git
+├── DEPLOYMENT-GUIDE.md     # Solutions for handling large video file
+└── README.md               # This file
 ```
+
+**⚠️ Note about Video File:** The video file is too large for GitHub (>25MB limit). See [DEPLOYMENT-GUIDE.md](DEPLOYMENT-GUIDE.md) for solutions:
+- Use Git LFS to upload large files
+- Host video externally (Google Drive, Cloudinary, YouTube)
+- Deploy without video (AR experience still works perfectly)
 
 ## How to Use 🎮
 
@@ -84,17 +91,24 @@ veerar/
 
 ### Method 1: GitHub Pages (Recommended)
 
+**⚠️ IMPORTANT:** The video file is too large for GitHub. See [DEPLOYMENT-GUIDE.md](DEPLOYMENT-GUIDE.md) for solutions.
+
+**Quick Deploy (Without Video):**
 1. Create a new GitHub repository
-2. Upload all files:
+2. Upload files (video is already excluded via `.gitignore`):
    - `index.html`
    - `plane_glb.glb`
-   - `veer video.mp4`
    - `README.md`
+   - `DEPLOYMENT-GUIDE.md`
+   - `.gitignore`
+   - `start-server.bat`
 
 3. Go to repository **Settings** → **Pages**
 4. Under "Source", select **main** branch
 5. Click **Save**
 6. Your site will be live at: `https://yourusername.github.io/repository-name/`
+
+**Note:** The AR experience works perfectly without the video. The video button simply won't play anything.
 
 ### Method 2: Test Locally with Web Server
 
