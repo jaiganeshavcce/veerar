@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR Airplane Experience</title>
+    
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* 3D Model Viewer */
+        model-viewer {
+            width: 100%;
+            height: 100vh;
+            background: transparent;
+            --progress-bar-color: #667eea;
+        }
+
+        /* AR Button */
+        .ar-button {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            color: #333;
+            border: none;
+            padding: 15px 35px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 100;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .ar-button:hover {
+            transform: translateX(-50%) scale(1.05);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+        }
+
+        .ar-button:active {
+            transform: translateX(-50%) scale(0.98);
+        }
+
+        .ar-button svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* Control Panel */
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            transition: background 0.2s;
+        }
+
+        .control-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .control-btn.active {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .control-btn svg {
+            width: 28px;
+            height: 28px;
+            fill: #333;
+        }
+
+        .control-btn span {
+            font-size: 11px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .control-btn.active svg {
+            fill: #667eea;
+        }
+
+        .control-btn.active span {
+            color: #667eea;
+        }
+
+        /* Video Player Overlay */
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            backdrop-filter: blur(5px);
+        }
+
+        .video-container {
+            position: relative;
+            width: 90%;
+            max-width: 800px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .video-container video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .close-video {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #333;
+            z-index: 10;
+            transition: transform 0.2s;
+        }
+
+        .close-video:hover {
+            transform: scale(1.1);
+        }
+
+        /* Loading Indicator */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 50;
+            display: none;
+        }
+
+        /* Instructions */
+        .instructions {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-size: 13px;
+            color: #333;
+            text-align: center;
+            z-index: 90;
+            max-width: 90%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .controls {
+                gap: 8px;
+                padding: 8px 12px;
+            }
+
+            .control-btn {
+                padding: 6px 8px;
+            }
+
+            .control-btn svg {
+                width: 24px;
+                height: 24px;
+            }
+
+            .control-btn span {
+                font-size: 10px;
+            }
+
+            .ar-button {
+                padding: 12px 28px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading indicator -->
+    <div class="loading" id="loading">Loading 3D Model...</div>
+
+    <!-- 3D Model Viewer -->
+    <model-viewer 
+        id="airplane"
+        src="./plane_glb.glb" 
+        alt="Airplane 3D Model" 
+        ar 
+        ar-modes="webxr scene-viewer quick-look" 
+        camera-controls 
+        auto-rotate
+        autoplay
+        shadow-intensity="1.2"
+        ar-scale="auto"
+        ar-placement="floor"
+        min-camera-orbit="auto auto 3m"
+        max-camera-orbit="auto auto 15m"
+        interaction-prompt="none"
+        camera-orbit="45deg 75deg 8m"
+        environment-image="neutral"
+        exposure="1.0">
+    </model-viewer>
+
+    <!-- Control Panel -->
+    <div class="controls">
+        <button class="control-btn active" id="animateBtn" onclick="toggleAnimation()">
+            <svg viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+            <span>Fly</span>
+        </button>
+
+        <button class="control-btn" id="videoBtn" onclick="playVideo()">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <span>Video</span>
+        </button>
+
+        <button class="control-btn" id="resetBtn" onclick="resetView()">
+            <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+            <span>Reset</span>
+        </button>
+    </div>
+
+    <!-- AR Button -->
+    <button class="ar-button" onclick="activateAR()">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
+        </svg>
+        View in AR
+    </button>
+
+    <!-- Instructions -->
+    <div class="instructions">
+        Tap controls to interact • Use AR button to view in your space
+    </div>
+
+    <!-- Video Overlay -->
+    <div class="video-overlay" id="videoOverlay">
+        <div class="video-container">
+            <button class="close-video" onclick="closeVideo()">×</button>
+            <video id="planeVideo" controls>
+                <source src="./veer video.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+    </div>
+
+    <script>
+        const viewer = document.querySelector('#airplane');
+        const videoOverlay = document.getElementById('videoOverlay');
+        const planeVideo = document.getElementById('planeVideo');
+        const loading = document.getElementById('loading');
+        const animateBtn = document.getElementById('animateBtn');
+        const videoBtn = document.getElementById('videoBtn');
+
+        // Show loading indicator
+        loading.style.display = 'block';
+
+        // Hide loading when model is loaded
+        viewer.addEventListener('load', () => {
+            loading.style.display = 'none';
+            console.log('3D model loaded successfully');
+        });
+
+        // AR Activation
+        function activateAR() {
+            if (viewer.canActivateAR) {
+                viewer.activateAR();
+            } else {
+                alert('AR is not supported on this device. Please ensure you have ARCore (Android) or ARKit (iOS) compatible device.');
+            }
+        }
+
+        // Toggle Animation
+        function toggleAnimation() {
+            if (viewer.paused) {
+                viewer.play();
+                animateBtn.classList.add('active');
+            } else {
+                viewer.pause();
+                animateBtn.classList.remove('active');
+            }
+        }
+
+        // Play Video
+        function playVideo() {
+            videoOverlay.style.display = 'flex';
+            planeVideo.currentTime = 0;
+            planeVideo.play();
+            videoBtn.classList.add('active');
+            
+            // Auto-remove active state when video ends
+            planeVideo.addEventListener('ended', () => {
+                videoBtn.classList.remove('active');
+            });
+        }
+
+        // Close Video
+        function closeVideo() {
+            videoOverlay.style.display = 'none';
+            planeVideo.pause();
+            videoBtn.classList.remove('active');
+        }
+
+        // Close video when clicking outside
+        videoOverlay.addEventListener('click', (e) => {
+            if (e.target === videoOverlay) {
+                closeVideo();
+            }
+        });
+
+        // Reset Camera View
+        function resetView() {
+            viewer.cameraOrbit = "45deg 75deg 8m";
+            viewer.fieldOfView = "auto";
+            viewer.jumpCameraToGoal();
+            
+            const resetBtn = document.getElementById('resetBtn');
+            resetBtn.classList.add('active');
+            setTimeout(() => resetBtn.classList.remove('active'), 500);
+        }
+
+        // Auto-rotate management
+        viewer.addEventListener('camera-change', () => {
+            // Pause auto-rotate when user interacts
+            if (viewer.interactionPrompt !== 'none') {
+                viewer.autoRotate = false;
+            }
+        });
+
+        // Error handling
+        viewer.addEventListener('error', (event) => {
+            console.error('Error loading model:', event);
+            loading.textContent = '⚠️ Model loading error. Try hosting on a web server or GitHub Pages.';
+            loading.style.background = 'rgba(255, 235, 238, 0.95)';
+            loading.style.padding = '15px 25px';
+            loading.style.borderRadius = '10px';
+            loading.style.color = '#c62828';
+            loading.style.display = 'block';
+        });
+
+        // Additional loading feedback
+        viewer.addEventListener('progress', (event) => {
+            const progress = event.detail.totalProgress;
+            if (progress < 1) {
+                loading.textContent = `Loading model... ${Math.round(progress * 100)}%`;
+            }
+        });
+
+        // Prevent default video controls behavior on mobile
+        planeVideo.addEventListener('play', () => {
+            console.log('Video playing');
+        });
+    </script>
+</body>
+</html>
