@@ -126,9 +126,9 @@
         <!-- Video Plane Entity -->
         <a-plane 
             id="video-plane"
-            width="0.4"
-            height="0.225"
-            position="0 1.6 -1"
+            width="1.2"
+            height="0.675"
+            position="0 1.2 -1.5"
             rotation="-15 0 0"
             material="shader: flat; src: #video-texture; side: double; transparent: false"
             animation__rotate="property: rotation; to: -15 360 0; loop: true; dur: 40000; easing: linear">
@@ -232,6 +232,13 @@
             if (camera) {
                 camera.setAttribute('position', '0 1.6 0');
                 camera.setAttribute('rotation', '0 0 0');
+            }
+            
+            // Reset plane position too
+            const plane = document.querySelector('#video-plane');
+            if (plane) {
+                plane.setAttribute('position', '0 1.2 -1.5');
+                plane.setAttribute('rotation', '-15 0 0');
             }
             
             const resetBtn = document.querySelector('#resetBtn');
