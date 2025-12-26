@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
     <title>AR Video Plane Experience</title>
     
-    <!-- A-Frame and AR.js for AR capabilities -->
+    <!-- A-Frame and AR.js -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
     
     <style>
         body {
@@ -23,28 +24,25 @@
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 15px;
+            gap: 10px;
             background: rgba(255, 255, 255, 0.95);
-            padding: 12px 20px;
-            border-radius: 25px;
+            padding: 10px 15px;
+            border-radius: 20px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            z-index: 1000;
+            z-index: 10000;
         }
 
         .control-btn {
             background: white;
             border: 2px solid #667eea;
-            padding: 10px 20px;
-            border-radius: 15px;
+            padding: 8px 15px;
+            border-radius: 12px;
             cursor: pointer;
             font-weight: 600;
+            font-size: 12px;
             color: #667eea;
             transition: all 0.2s;
-        }
-
-        .control-btn:hover {
-            background: #667eea;
-            color: white;
+            white-space: nowrap;
         }
 
         .control-btn.active {
@@ -60,11 +58,12 @@
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.8);
             color: white;
-            padding: 15px 25px;
+            padding: 12px 20px;
             border-radius: 15px;
-            font-size: 14px;
-            z-index: 1000;
+            font-size: 13px;
+            z-index: 10000;
             text-align: center;
+            max-width: 80%;
         }
 
         /* Loading indicator */
@@ -73,40 +72,46 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.9);
             color: white;
             padding: 20px 40px;
             border-radius: 10px;
             font-size: 16px;
-            z-index: 2000;
+            z-index: 20000;
+        }
+
+        .a-canvas {
+            z-index: 1 !important;
         }
     </style>
 </head>
 <body>
     <!-- Loading screen -->
-    <div class="loading" id="loading">Loading AR Experience...</div>
+    <div class="loading" id="loading">Initializing AR Camera...</div>
 
     <!-- Control Panel -->
     <div class="controls" id="controls" style="display: none;">
-        <button class="control-btn active" id="playBtn" onclick="toggleVideo()">Play Video</button>
-        <button class="control-btn active" id="rotateBtn" onclick="toggleRotation()">Stop Rotation</button>
-        <button class="control-btn" id="resetBtn" onclick="resetCamera()">Reset View</button>
+        <button class="control-btn active" id="playBtn" onclick="toggleVideo()">⏸ Pause</button>
+        <button class="control-btn active" id="rotateBtn" onclick="toggleRotation()">⏸ Stop</button>
+        <button class="control-btn" id="resetBtn" onclick="resetPlane()">↻ Reset</button>
     </div>
 
     <!-- Instructions -->
     <div class="instructions" id="instructions" style="display: none;">
-        Tap screen to place video plane • Use controls to play/pause
+        Pinch to zoom • Drag to move plane • Look around with camera
     </div>
 
-    <!-- A-Frame Scene -->
+    <!-- A-Frame Scene with AR -->
     <a-scene 
         embedded
+        arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
         vr-mode-ui="enabled: false"
-        renderer="antialias: true; colorManagement: true; sortObjects: true;"
-        loading-screen="enabled: false">
+        renderer="logarithmicDepthBuffer: true; precision: medium; antialias: true;"
+        loading-screen="enabled: false"
+        gesture-detector>
         
         <!-- Video Asset -->
-        <a-assets timeout="10000">
+        <a-assets>
             <video 
                 id="video-texture" 
                 src="veer video.mp4" 
@@ -120,28 +125,127 @@
             </video>
         </a-assets>
 
-        <!-- Camera -->
-        <a-camera position="0 1.6 0" look-controls="enabled: true"></a-camera>
+        <!-- AR Camera -->
+        <a-camera 
+            gps-camera="minDistance: 0; maxDistance: 10" 
+            rotation-reader
+            look-controls="enabled: true; touchEnabled: true"
+            wasd-controls="enabled: false">
+        </a-camera>
 
-        <!-- Video Plane Entity -->
-        <a-plane 
-            id="video-plane"
-            width="1.2"
-            height="0.675"
-            position="0 1.2 -1.5"
-            rotation="-15 0 0"
-            material="shader: flat; src: #video-texture; side: double; transparent: false"
-            animation__rotate="property: rotation; to: -15 360 0; loop: true; dur: 40000; easing: linear">
-        </a-plane>
+        <!-- Video Plane Entity with gestures -->
+        <a-entity
+            id="video-container"
+            position="0 0 -1">
+            <a-plane 
+                id="video-plane"
+                width="0.4"
+                height="0.225"
+                position="0 0 0"
+                rotation="-15 0 0"
+                material="shader: flat; src: #video-texture; side: double; transparent: false"
+                animation__rotate="property: rotation; to: -15 360 0; loop: true; dur: 40000; easing: linear"
+                gesture-handler="minScale: 0.5; maxScale: 3">
+            </a-plane>
+        </a-entity>
 
         <!-- Ambient Light -->
-        <a-entity light="type: ambient; intensity: 0.8"></a-entity>
-        
-        <!-- Directional Light -->
-        <a-entity light="type: directional; intensity: 0.5" position="-1 2 1"></a-entity>
+        <a-entity light="type: ambient; intensity: 1"></a-entity>
     </a-scene>
 
     <script>
+        // Gesture handling for pinch zoom and drag
+        AFRAME.registerComponent('gesture-detector', {
+            schema: {
+                enabled: {default: true}
+            },
+            init: function() {
+                this.handleTouchStart = this.handleTouchStart.bind(this);
+                this.handleTouchMove = this.handleTouchMove.bind(this);
+                this.handleTouchEnd = this.handleTouchEnd.bind(this);
+                this.touches = [];
+            },
+            play: function() {
+                const sceneEl = this.el.sceneEl;
+                const canvasEl = sceneEl.canvas;
+                canvasEl.addEventListener('touchstart', this.handleTouchStart);
+                canvasEl.addEventListener('touchmove', this.handleTouchMove);
+                canvasEl.addEventListener('touchend', this.handleTouchEnd);
+            },
+            pause: function() {
+                const sceneEl = this.el.sceneEl;
+                const canvasEl = sceneEl.canvas;
+                canvasEl.removeEventListener('touchstart', this.handleTouchStart);
+                canvasEl.removeEventListener('touchmove', this.handleTouchMove);
+                canvasEl.removeEventListener('touchend', this.handleTouchEnd);
+            },
+            handleTouchStart: function(event) {
+                this.touches = Array.from(event.touches);
+                if (this.touches.length === 2) {
+                    this.initialDistance = this.getDistance(this.touches[0], this.touches[1]);
+                }
+            },
+            handleTouchMove: function(event) {
+                event.preventDefault();
+                const touches = Array.from(event.touches);
+                
+                // Two finger pinch zoom
+                if (touches.length === 2 && this.touches.length === 2) {
+                    const distance = this.getDistance(touches[0], touches[1]);
+                    const scale = distance / this.initialDistance;
+                    this.el.emit('pinch', {scale: scale});
+                    this.initialDistance = distance;
+                }
+                // One finger drag
+                else if (touches.length === 1 && this.touches.length === 1) {
+                    const deltaX = touches[0].clientX - this.touches[0].clientX;
+                    const deltaY = touches[0].clientY - this.touches[0].clientY;
+                    this.el.emit('drag', {deltaX: deltaX, deltaY: deltaY});
+                }
+                
+                this.touches = touches;
+            },
+            handleTouchEnd: function(event) {
+                this.touches = Array.from(event.touches);
+            },
+            getDistance: function(touch1, touch2) {
+                const dx = touch1.clientX - touch2.clientX;
+                const dy = touch1.clientY - touch2.clientY;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+        });
+
+        // Gesture handler for individual entities
+        AFRAME.registerComponent('gesture-handler', {
+            schema: {
+                enabled: {default: true},
+                minScale: {default: 0.5},
+                maxScale: {default: 3}
+            },
+            init: function() {
+                this.initialScale = this.el.object3D.scale.clone();
+                this.scaleFactor = 1;
+                
+                this.el.sceneEl.addEventListener('pinch', (event) => {
+                    this.scaleFactor *= event.detail.scale;
+                    this.scaleFactor = Math.max(this.data.minScale, 
+                                               Math.min(this.data.maxScale, this.scaleFactor));
+                    this.el.object3D.scale.x = this.initialScale.x * this.scaleFactor;
+                    this.el.object3D.scale.y = this.initialScale.y * this.scaleFactor;
+                    this.el.object3D.scale.z = this.initialScale.z * this.scaleFactor;
+                });
+                
+                this.el.sceneEl.addEventListener('drag', (event) => {
+                    const container = document.querySelector('#video-container');
+                    const position = container.getAttribute('position');
+                    // Move plane in 3D space based on drag
+                    position.x += event.detail.deltaX * 0.001;
+                    position.y -= event.detail.deltaY * 0.001;
+                    container.setAttribute('position', position);
+                });
+            }
+        });
+
         const video = document.querySelector('#video-texture');
         const videoPlane = document.querySelector('#video-plane');
         const playBtn = document.querySelector('#playBtn');
@@ -152,37 +256,31 @@
         let isPlaying = false;
         let isRotating = true;
 
-        // Wait for scene to load
         const scene = document.querySelector('a-scene');
         
-        // Hide loading screen after delay
-        setTimeout(() => {
-            loading.style.display = 'none';
-            controls.style.display = 'flex';
-            instructions.style.display = 'block';
-        }, 2000);
-        
+        // Wait for AR scene to load
         scene.addEventListener('loaded', function() {
-            console.log('AR Scene loaded successfully');
-            
-            // Ensure video is ready
-            if (video.readyState >= 2) {
-                playVideo();
-            } else {
-                video.addEventListener('loadeddata', function() {
+            setTimeout(() => {
+                loading.style.display = 'none';
+                controls.style.display = 'flex';
+                instructions.style.display = 'block';
+                console.log('AR Scene loaded');
+                
+                // Auto-play video
+                if (video.readyState >= 2) {
                     playVideo();
-                }, { once: true });
-            }
+                }
+            }, 2000);
         });
-        
-        // Additional fallback to ensure video plays
-        video.addEventListener('canplaythrough', function() {
+
+        // Video ready
+        video.addEventListener('loadeddata', function() {
+            console.log('Video loaded');
             if (!isPlaying) {
                 playVideo();
             }
-        }, { once: true });
+        });
 
-        // Video control function
         function toggleVideo() {
             if (isPlaying) {
                 pauseVideo();
@@ -192,83 +290,74 @@
         }
 
         function playVideo() {
-            video.muted = false; // Unmute when user interacts
+            video.muted = false;
             video.play().then(() => {
                 isPlaying = true;
-                playBtn.textContent = 'Pause Video';
+                playBtn.innerHTML = '⏸ Pause';
                 playBtn.classList.add('active');
-                console.log('Video playing');
             }).catch(err => {
-                console.error('Video play error:', err);
+                console.error('Play error:', err);
             });
         }
 
         function pauseVideo() {
             video.pause();
             isPlaying = false;
-            playBtn.textContent = 'Play Video';
+            playBtn.innerHTML = '▶ Play';
             playBtn.classList.remove('active');
-            console.log('Video paused');
         }
 
-        // Toggle rotation
         function toggleRotation() {
             isRotating = !isRotating;
             const plane = document.querySelector('#video-plane');
             if (isRotating) {
-                plane.setAttribute('animation__rotate', 'property: rotation; to: -15 360 0; loop: true; dur: 40000; easing: linear');
-                rotateBtn.textContent = 'Stop Rotation';
+                plane.setAttribute('animation__rotate', 
+                    'property: rotation; to: -15 360 0; loop: true; dur: 40000; easing: linear');
+                rotateBtn.innerHTML = '⏸ Stop';
                 rotateBtn.classList.add('active');
             } else {
                 plane.removeAttribute('animation__rotate');
-                rotateBtn.textContent = 'Start Rotation';
+                rotateBtn.innerHTML = '▶ Rotate';
                 rotateBtn.classList.remove('active');
             }
         }
 
-        // Reset camera view
-        function resetCamera() {
-            const camera = document.querySelector('a-camera');
-            if (camera) {
-                camera.setAttribute('position', '0 1.6 0');
-                camera.setAttribute('rotation', '0 0 0');
-            }
-            
-            // Reset plane position too
+        function resetPlane() {
+            const container = document.querySelector('#video-container');
             const plane = document.querySelector('#video-plane');
-            if (plane) {
-                plane.setAttribute('position', '0 1.2 -1.5');
-                plane.setAttribute('rotation', '-15 0 0');
+            
+            // Reset position
+            container.setAttribute('position', '0 0 -1');
+            
+            // Reset scale
+            plane.object3D.scale.set(1, 1, 1);
+            const handler = plane.components['gesture-handler'];
+            if (handler) {
+                handler.scaleFactor = 1;
             }
             
+            // Reset rotation
+            plane.setAttribute('rotation', '-15 0 0');
+            
+            // Flash button
             const resetBtn = document.querySelector('#resetBtn');
             resetBtn.classList.add('active');
             setTimeout(() => resetBtn.classList.remove('active'), 500);
         }
 
-        // Handle video errors
+        // Handle errors
         video.addEventListener('error', function(e) {
-            console.error('Video loading error:', e);
-            loading.textContent = 'Error loading video. Check file path.';
+            console.error('Video error:', e);
+            loading.textContent = 'Video loading error. Check file path.';
             loading.style.display = 'block';
         });
 
-        // Video events for debugging
-        video.addEventListener('loadeddata', function() {
-            console.log('Video data loaded');
-        });
-
-        video.addEventListener('canplay', function() {
-            console.log('Video can play');
-        });
-
-        // iOS requires user interaction for video
+        // iOS touch to play
         document.addEventListener('touchstart', function() {
-            if (!isPlaying) {
+            if (!isPlaying && video.readyState >= 2) {
                 playVideo();
             }
         }, { once: true });
-
     </script>
 </body>
 </html>
