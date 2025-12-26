@@ -102,8 +102,9 @@
     <a-scene 
         embedded
         vr-mode-ui="enabled: false"
-        renderer="antialias: true; colorManagement: true; sortObjects: true;"
-        loading-screen="enabled: false">
+        renderer="antialias: true; colorManagement: true; sortObjects: true; physicallyCorrectLights: true;"
+        loading-screen="enabled: false"
+        device-orientation-permission-ui="enabled: true">
         
         <!-- Video Asset -->
         <a-assets timeout="10000">
@@ -120,8 +121,14 @@
             </video>
         </a-assets>
 
-        <!-- Camera -->
-        <a-camera position="0 1.6 0" look-controls="enabled: true"></a-camera>
+        <!-- Camera with movement controls -->
+        <a-entity id="rig" position="0 0 0">
+            <a-camera 
+                position="0 1.6 0" 
+                look-controls="enabled: true; touchEnabled: true"
+                wasd-controls="enabled: false">
+            </a-camera>
+        </a-entity>
 
         <!-- Video Plane Entity -->
         <a-plane 
@@ -268,26 +275,39 @@
             const viewportHeight = window.innerHeight;
             
             // Calculate appropriate AR plane size based on viewport
-            // Smaller screens get smaller planes, larger screens get larger planes
-            const baseWidth = viewportWidth / 1000; // Convert pixels to appropriate meter scale
+            const baseWidth = viewportWidth / 1000;
             const aspectRatio = 16 / 9;
-            const planeWidth = Math.max(0.3, Math.min(baseWidth, 0.6)); // Between 0.3m and 0.6m
+            const planeWidth = Math.max(0.3, Math.min(baseWidth, 0.6));
             const planeHeight = planeWidth / aspectRatio;
             
-            // Adjust distance based on screen size
-            const distance = planeWidth * 2.5; // Distance proportional to size
+            // START CENTERED - Place directly in front at comfortable distance
+            const distance = Math.min(planeWidth * 2.5, 1.2); // Max 1.2m for better view
             
             console.log('Viewport:', viewportWidth + 'x' + viewportHeight);
             console.log('Plane size:', planeWidth + 'm x ' + planeHeight + 'm');
             console.log('Distance:', distance + 'm');
+            console.log('CENTERED AT START - User can look around and move');
             
-            // Apply to video plane
+            // Apply to video plane - CENTERED in front of camera
             const plane = document.querySelector('#video-plane');
             if (plane) {
                 plane.setAttribute('width', planeWidth);
                 plane.setAttribute('height', planeHeight);
-                plane.setAttribute('position', `0 1.6 -${distance}`);
+                plane.setAttribute('position', `0 1.6 -${distance}`); // Center (0, eye level, in front)
             }
+        }
+
+        // Request device orientation permission for mobile
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            document.body.addEventListener('click', function() {
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            console.log('Device orientation permission granted');
+                        }
+                    })
+                    .catch(console.error);
+            }, { once: true });
         }
 
         // Adjust on load and resize
