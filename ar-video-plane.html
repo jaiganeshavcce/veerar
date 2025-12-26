@@ -129,7 +129,7 @@
             id="video-plane"
             width="0.4"
             height="0.225"
-            position="0 1.6 -1"
+            position="0 0 -1"
             rotation="-15 0 0"
             material="shader: flat; src: #video-texture; side: double; transparent: false"
             animation__rotate="property: rotation; to: -15 360 0; loop: true; dur: 40000; easing: linear">
@@ -282,12 +282,12 @@
             console.log('Plane size:', planeWidth + 'm x ' + planeHeight + 'm');
             console.log('Distance:', distance + 'm');
             
-            // Apply to video plane
+            // Apply to video plane - AR camera is at 0,0,0
             const plane = document.querySelector('#video-plane');
             if (plane) {
                 plane.setAttribute('width', planeWidth);
                 plane.setAttribute('height', planeHeight);
-                plane.setAttribute('position', `0 1.6 -${distance}`);
+                plane.setAttribute('position', `0 0 -${distance}`);
             }
         }
 
