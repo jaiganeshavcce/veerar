@@ -98,12 +98,11 @@
         Tap screen to place video plane • Use controls to play/pause
     </div>
 
-    <!-- A-Frame Scene with AR.js Camera -->
+    <!-- A-Frame Scene -->
     <a-scene 
         embedded
-        arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
         vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; precision: medium;"
+        renderer="antialias: true; colorManagement: true; sortObjects: true;"
         loading-screen="enabled: false">
         
         <!-- Video Asset -->
@@ -121,15 +120,15 @@
             </video>
         </a-assets>
 
-        <!-- AR Camera -->
-        <a-camera gps-camera rotation-reader></a-camera>
+        <!-- Camera -->
+        <a-camera position="0 1.6 0" look-controls="enabled: true"></a-camera>
 
         <!-- Video Plane Entity -->
         <a-plane 
             id="video-plane"
             width="0.4"
             height="0.225"
-            position="0 0 -1"
+            position="0 1.6 -1"
             rotation="-15 0 0"
             material="shader: flat; src: #video-texture; side: double; transparent: false"
             animation__rotate="property: rotation; to: -15 360 0; loop: true; dur: 40000; easing: linear">
@@ -263,41 +262,6 @@
             }
         }, { once: true });
 
-        // DYNAMIC SIZING BASED ON MOBILE VIEWPORT
-        function adjustPlaneSize() {
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-            
-            // Calculate appropriate AR plane size based on viewport
-            // Smaller screens get smaller planes, larger screens get larger planes
-            const baseWidth = viewportWidth / 1000; // Convert pixels to appropriate meter scale
-            const aspectRatio = 16 / 9;
-            const planeWidth = Math.max(0.3, Math.min(baseWidth, 0.6)); // Between 0.3m and 0.6m
-            const planeHeight = planeWidth / aspectRatio;
-            
-            // Adjust distance based on screen size
-            const distance = planeWidth * 2.5; // Distance proportional to size
-            
-            console.log('Viewport:', viewportWidth + 'x' + viewportHeight);
-            console.log('Plane size:', planeWidth + 'm x ' + planeHeight + 'm');
-            console.log('Distance:', distance + 'm');
-            
-            // Apply to video plane - AR camera is at 0,0,0
-            const plane = document.querySelector('#video-plane');
-            if (plane) {
-                plane.setAttribute('width', planeWidth);
-                plane.setAttribute('height', planeHeight);
-                plane.setAttribute('position', `0 0 -${distance}`);
-            }
-        }
-
-        // Adjust on load and resize
-        window.addEventListener('load', adjustPlaneSize);
-        window.addEventListener('resize', adjustPlaneSize);
-        window.addEventListener('orientationchange', adjustPlaneSize);
-        
-        // Initial adjustment
-        setTimeout(adjustPlaneSize, 100);
     </script>
 </body>
 </html>
