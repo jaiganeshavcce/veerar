@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AR Video Plane Experience</title>
     
     <!-- A-Frame and AR.js for AR capabilities -->
@@ -97,39 +97,40 @@
         Tap screen to place video plane • Use controls to play/pause
     </div>
 
-    <!-- A-Frame Scene with AR capabilities -->
+    <!-- A-Frame Scene -->
     <a-scene 
-        embedded 
-        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        embedded
         vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; precision: medium;"
+        renderer="antialias: true; colorManagement: true; sortObjects: true;"
         loading-screen="enabled: false">
         
         <!-- Video Asset -->
-        <a-assets>
+        <a-assets timeout="10000">
             <video 
                 id="video-texture" 
                 src="veer video.mp4" 
                 preload="auto" 
-                loop="true"
-                crossorigin="anonymous"
+                loop
+                muted
                 playsinline
-                webkit-playsinline>
+                webkit-playsinline
+                crossorigin="anonymous"
+                style="display: none;">
             </video>
         </a-assets>
 
         <!-- Camera -->
-        <a-camera gps-camera rotation-reader></a-camera>
+        <a-camera position="0 1.6 0" look-controls="enabled: true"></a-camera>
 
         <!-- Video Plane Entity -->
         <a-plane 
             id="video-plane"
-            material="src: #video-texture; shader: flat; side: double"
-            width="3.2"
-            height="1.8"
-            position="0 1 -4"
+            width="4"
+            height="2.25"
+            position="0 1.6 -5"
             rotation="0 0 0"
-            animation="property: rotation; to: 0 360 0; loop: true; dur: 20000; easing: linear">
+            material="shader: flat; src: #video-texture; side: double; transparent: false"
+            animation="property: rotation; to: 0 360 0; loop: true; dur: 30000; easing: linear">
         </a-plane>
 
         <!-- Ambient Light -->
@@ -151,19 +152,32 @@
         // Wait for scene to load
         const scene = document.querySelector('a-scene');
         
-        scene.addEventListener('loaded', function() {
-            // Hide loading screen
+        // Hide loading screen after delay
+        setTimeout(() => {
             loading.style.display = 'none';
             controls.style.display = 'flex';
             instructions.style.display = 'block';
-            
+        }, 2000);
+        
+        scene.addEventListener('loaded', function() {
             console.log('AR Scene loaded successfully');
             
-            // Auto-play video after a short delay
-            setTimeout(() => {
+            // Ensure video is ready
+            if (video.readyState >= 2) {
                 playVideo();
-            }, 1000);
+            } else {
+                video.addEventListener('loadeddata', function() {
+                    playVideo();
+                }, { once: true });
+            }
         });
+        
+        // Additional fallback to ensure video plays
+        video.addEventListener('canplaythrough', function() {
+            if (!isPlaying) {
+                playVideo();
+            }
+        }, { once: true });
 
         // Video control function
         function toggleVideo() {
@@ -175,11 +189,15 @@
         }
 
         function playVideo() {
-            video.play();
-            isPlaying = true;
-            playBtn.textContent = 'Pause Video';
-            playBtn.classList.add('active');
-            console.log('Video playing');
+            video.muted = false; // Unmute when user interacts
+            video.play().then(() => {
+                isPlaying = true;
+                playBtn.textContent = 'Pause Video';
+                playBtn.classList.add('active');
+                console.log('Video playing');
+            }).catch(err => {
+                console.error('Video play error:', err);
+            });
         }
 
         function pauseVideo() {
