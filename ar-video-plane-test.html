@@ -14,6 +14,17 @@
             overflow: hidden;
         }
 
+        /* Camera background */
+        #camera-feed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
         .controls {
             position: fixed;
             top: 20px;
@@ -57,17 +68,22 @@
     </style>
 </head>
 <body>
+    <!-- Camera Feed Background -->
+    <video id="camera-feed" autoplay playsinline muted></video>
+
     <div class="controls">
         <button class="control-btn active" id="playBtn" onclick="toggleVideo()">⏸ Pause</button>
+        <button class="control-btn" id="rotateBtn" onclick="toggleRotation()">▶ Rotate</button>
         <button class="control-btn" id="resetBtn" onclick="resetPlane()">↻ Reset</button>
     </div>
 
     <div class="debug" id="debug">Initializing...</div>
 
-    <!-- A-Frame Scene - NO TRANSPARENT BACKGROUND -->
+    <!-- A-Frame Scene with transparent background -->
     <a-scene
         vr-mode-ui="enabled: false"
-        renderer="antialias: true; colorManagement: false;">
+        renderer="antialias: true; colorManagement: false; alpha: true"
+        background="transparent">
         
         <a-assets>
             <video 
@@ -117,23 +133,45 @@
         <a-entity light="type: ambient; intensity: 0.8"></a-entity>
         <a-entity light="type: directional; intensity: 0.6" position="1 2 1"></a-entity>
         
-        <!-- Sky for reference -->
-        <a-sky color="#87CEEB"></a-sky>
     </a-scene>
 
     <script>
         const video = document.querySelector('#video-texture');
         const playBtn = document.querySelector('#playBtn');
+        const rotateBtn = document.querySelector('#rotateBtn');
         const debugEl = document.querySelector('#debug');
+        const cameraFeed = document.querySelector('#camera-feed');
         let isPlaying = false;
+        let isRotating = false;
         let debugInfo = [];
+        let rotationAnimation = null;
 
         function updateDebug(msg) {
             debugInfo.push(msg);
-            if (debugInfo.length > 8) debugInfo.shift();
+            if (debugInfo.length > 10) debugInfo.shift();
             debugEl.innerHTML = debugInfo.join('<br>');
             console.log(msg);
         }
+
+        // Initialize camera
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                cameraFeed.srcObject = stream;
+                updateDebug('✓ Camera initialized');
+            } catch (err) {
+                updateDebug('✗ Camera error: ' + err.message);
+            }
+        }
+
+        // Start camera on load
+        initCamera();
 
         const scene = document.querySelector('a-scene');
         
@@ -200,11 +238,50 @@
             updateDebug('⏸ Paused');
         }
 
+        function toggleRotation() {
+            const videoPlane = document.querySelector('#video-plane');
+            
+            if (isRotating) {
+                // Stop rotation
+                if (rotationAnimation) {
+                    rotationAnimation.pause();
+                    rotationAnimation = null;
+                }
+                isRotating = false;
+                rotateBtn.innerHTML = '▶ Rotate';
+                rotateBtn.classList.remove('active');
+                updateDebug('⏸ Rotation stopped');
+            } else {
+                // Start rotation
+                const currentRotation = videoPlane.getAttribute('rotation');
+                videoPlane.setAttribute('animation', {
+                    property: 'rotation',
+                    from: `${currentRotation.x} ${currentRotation.y} ${currentRotation.z}`,
+                    to: `${currentRotation.x} ${currentRotation.y + 360} ${currentRotation.z}`,
+                    dur: 40000,
+                    loop: true,
+                    easing: 'linear'
+                });
+                isRotating = true;
+                rotateBtn.innerHTML = '⏸ Stop';
+                rotateBtn.classList.add('active');
+                updateDebug('▶ Rotation started (40s per cycle)');
+            }
+        }
+
         function resetPlane() {
             const videoPlane = document.querySelector('#video-plane');
+            
+            // Stop rotation if active
+            if (isRotating) {
+                toggleRotation();
+            }
+            
+            // Reset position and rotation
+            videoPlane.removeAttribute('animation');
             videoPlane.setAttribute('position', '0 1.2 -1.5');
             videoPlane.setAttribute('rotation', '-15 0 0');
-            updateDebug('↻ Reset');
+            updateDebug('↻ Reset to default');
         }
 
         document.addEventListener('touchstart', function() {
