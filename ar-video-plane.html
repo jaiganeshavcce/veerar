@@ -137,7 +137,7 @@
         <a-assets>
             <video 
                 id="video-texture" 
-                src="veer video.mp4" 
+                src="veer_video.mp4" 
                 preload="auto" 
                 loop
                 muted
@@ -166,8 +166,9 @@
             </a-plane>
         </a-entity>
 
-        <!-- Lighting -->
+        <!-- Lighting for better visibility -->
         <a-entity light="type: ambient; intensity: 1"></a-entity>
+        <a-entity light="type: directional; intensity: 0.5" position="0 2 0"></a-entity>
     </a-scene>
 
     <script>
@@ -301,12 +302,26 @@
         
         scene.addEventListener('loaded', function() {
             console.log('Scene loaded');
-            if (video.readyState >= 2) {
-                playVideo();
-            }
+            
+            // Force update material after scene loads
+            setTimeout(() => {
+                const plane = document.querySelector('#video-plane');
+                if (plane) {
+                    // Force material update
+                    plane.setAttribute('material', 'src', '#video-texture');
+                    plane.setAttribute('material', 'shader', 'standard');
+                    plane.setAttribute('material', 'side', 'double');
+                    plane.setAttribute('visible', 'true');
+                }
+                
+                if (video.readyState >= 2) {
+                    playVideo();
+                }
+            }, 500);
         });
 
         video.addEventListener('loadeddata', function() {
+            console.log('Video loaded, ready state:', video.readyState);
             if (!isPlaying) {
                 playVideo();
             }

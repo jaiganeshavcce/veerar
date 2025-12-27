@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR Video Plane Test</title>
+    
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 15px;
+            border-radius: 20px;
+            z-index: 10000;
+        }
+
+        .control-btn {
+            background: white;
+            border: 2px solid #667eea;
+            padding: 8px 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            color: #667eea;
+        }
+
+        .control-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .debug {
+            position: fixed;
+            top: 80px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            font-size: 11px;
+            z-index: 10000;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button class="control-btn active" id="playBtn" onclick="toggleVideo()">⏸ Pause</button>
+        <button class="control-btn" id="resetBtn" onclick="resetPlane()">↻ Reset</button>
+    </div>
+
+    <div class="debug" id="debug">Initializing...</div>
+
+    <!-- A-Frame Scene - NO TRANSPARENT BACKGROUND -->
+    <a-scene
+        vr-mode-ui="enabled: false"
+        renderer="antialias: true; colorManagement: false;">
+        
+        <a-assets>
+            <video 
+                id="video-texture" 
+                src="veer_video.mp4" 
+                preload="auto" 
+                loop
+                muted
+                playsinline
+                webkit-playsinline
+                crossorigin="anonymous">
+            </video>
+        </a-assets>
+
+        <!-- Camera -->
+        <a-camera position="0 1.6 0" look-controls></a-camera>
+
+        <!-- Bright colored plane for visibility test -->
+        <a-plane 
+            id="test-plane"
+            position="-2 1.2 -1.5"
+            width="0.5"
+            height="0.5"
+            color="#FF0000">
+        </a-plane>
+
+        <!-- Video Plane -->
+        <a-plane 
+            id="video-plane"
+            width="1.2"
+            height="0.675"
+            position="0 1.2 -1.5"
+            rotation="-15 0 0"
+            material="src: #video-texture; side: double">
+        </a-plane>
+
+        <!-- Green reference plane -->
+        <a-plane 
+            id="reference-plane"
+            position="2 1.2 -1.5"
+            width="0.5"
+            height="0.5"
+            color="#00FF00">
+        </a-plane>
+
+        <!-- Lighting -->
+        <a-entity light="type: ambient; intensity: 0.8"></a-entity>
+        <a-entity light="type: directional; intensity: 0.6" position="1 2 1"></a-entity>
+        
+        <!-- Sky for reference -->
+        <a-sky color="#87CEEB"></a-sky>
+    </a-scene>
+
+    <script>
+        const video = document.querySelector('#video-texture');
+        const playBtn = document.querySelector('#playBtn');
+        const debugEl = document.querySelector('#debug');
+        let isPlaying = false;
+        let debugInfo = [];
+
+        function updateDebug(msg) {
+            debugInfo.push(msg);
+            if (debugInfo.length > 8) debugInfo.shift();
+            debugEl.innerHTML = debugInfo.join('<br>');
+            console.log(msg);
+        }
+
+        const scene = document.querySelector('a-scene');
+        
+        scene.addEventListener('loaded', function() {
+            updateDebug('✓ Scene loaded');
+            
+            const videoPlane = document.querySelector('#video-plane');
+            const testPlane = document.querySelector('#test-plane');
+            const refPlane = document.querySelector('#reference-plane');
+            
+            updateDebug(`Video plane visible: ${videoPlane.getAttribute('visible')}`);
+            updateDebug(`Test plane (red) visible: ${testPlane.getAttribute('visible')}`);
+            updateDebug(`Ref plane (green) visible: ${refPlane.getAttribute('visible')}`);
+            
+            if (video.readyState >= 2) {
+                playVideo();
+            }
+        });
+
+        video.addEventListener('loadeddata', function() {
+            updateDebug(`✓ Video loaded (${video.videoWidth}x${video.videoHeight})`);
+            if (!isPlaying) {
+                playVideo();
+            }
+        });
+
+        video.addEventListener('canplay', function() {
+            updateDebug('✓ Video can play');
+        });
+
+        video.addEventListener('playing', function() {
+            updateDebug('✓ Video is playing');
+        });
+
+        video.addEventListener('error', function(e) {
+            updateDebug('✗ Video error: ' + e.message);
+        });
+
+        function toggleVideo() {
+            if (isPlaying) {
+                pauseVideo();
+            } else {
+                playVideo();
+            }
+        }
+
+        function playVideo() {
+            video.muted = false;
+            video.play().then(() => {
+                isPlaying = true;
+                playBtn.innerHTML = '⏸ Pause';
+                playBtn.classList.add('active');
+                updateDebug('▶ Play triggered');
+            }).catch(err => {
+                updateDebug('✗ Play error: ' + err.message);
+            });
+        }
+
+        function pauseVideo() {
+            video.pause();
+            isPlaying = false;
+            playBtn.innerHTML = '▶ Play';
+            playBtn.classList.remove('active');
+            updateDebug('⏸ Paused');
+        }
+
+        function resetPlane() {
+            const videoPlane = document.querySelector('#video-plane');
+            videoPlane.setAttribute('position', '0 1.2 -1.5');
+            videoPlane.setAttribute('rotation', '-15 0 0');
+            updateDebug('↻ Reset');
+        }
+
+        document.addEventListener('touchstart', function() {
+            if (!isPlaying && video.readyState >= 2) {
+                playVideo();
+            }
+        }, { once: true });
+
+        // Check video element state periodically
+        setInterval(() => {
+            if (video) {
+                const state = `Ready:${video.readyState} Paused:${video.paused}`;
+                if (debugInfo[debugInfo.length - 1] !== state) {
+                    updateDebug(state);
+                }
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
