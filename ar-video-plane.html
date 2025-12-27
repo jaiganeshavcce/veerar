@@ -2,19 +2,44 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AR Video Plane Experience</title>
     
-    <!-- A-Frame and AR.js -->
+    <!-- A-Frame -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
     
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        /* Camera background */
+        #camera-feed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+        }
+
+        /* A-Frame canvas on top */
+        .a-canvas {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 1 !important;
         }
 
         /* Controls Overlay */
@@ -79,15 +104,14 @@
             font-size: 16px;
             z-index: 20000;
         }
-
-        .a-canvas {
-            z-index: 1 !important;
-        }
     </style>
 </head>
 <body>
+    <!-- Camera Feed Background -->
+    <video id="camera-feed" autoplay playsinline></video>
+
     <!-- Loading screen -->
-    <div class="loading" id="loading">Initializing AR Camera...</div>
+    <div class="loading" id="loading">Initializing Camera...</div>
 
     <!-- Control Panel -->
     <div class="controls" id="controls" style="display: none;">
@@ -98,16 +122,15 @@
 
     <!-- Instructions -->
     <div class="instructions" id="instructions" style="display: none;">
-        Pinch to zoom • Drag to move plane • Look around with camera
+        Pinch to zoom • Drag to move plane
     </div>
 
-    <!-- A-Frame Scene with AR -->
+    <!-- A-Frame Scene -->
     <a-scene 
         embedded
-        arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
         vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; precision: medium; antialias: true;"
-        loading-screen="enabled: false"
+        renderer="antialias: true; alpha: true; colorManagement: false;"
+        background="transparent"
         gesture-detector>
         
         <!-- Video Asset -->
@@ -120,41 +143,67 @@
                 muted
                 playsinline
                 webkit-playsinline
-                crossorigin="anonymous"
-                style="display: none;">
+                crossorigin="anonymous">
             </video>
         </a-assets>
 
-        <!-- AR Camera -->
-        <a-camera 
-            gps-camera="minDistance: 0; maxDistance: 10" 
-            rotation-reader
-            look-controls="enabled: true; touchEnabled: true"
-            wasd-controls="enabled: false">
-        </a-camera>
+        <!-- Camera -->
+        <a-camera position="0 1.6 0" look-controls="enabled: true; touchEnabled: true"></a-camera>
 
-        <!-- Video Plane Entity with gestures -->
+        <!-- Video Plane with gestures -->
         <a-entity
             id="video-container"
-            position="0 0 -1">
+            position="0 1.2 -1.5">
             <a-plane 
                 id="video-plane"
-                width="0.4"
-                height="0.225"
+                width="1.2"
+                height="0.675"
                 position="0 0 0"
                 rotation="-15 0 0"
-                material="shader: flat; src: #video-texture; side: double; transparent: false"
+                material="src: #video-texture; side: double; transparent: false; opacity: 1"
                 animation__rotate="property: rotation; to: -15 360 0; loop: true; dur: 40000; easing: linear"
                 gesture-handler="minScale: 0.5; maxScale: 3">
             </a-plane>
         </a-entity>
 
-        <!-- Ambient Light -->
+        <!-- Lighting -->
         <a-entity light="type: ambient; intensity: 1"></a-entity>
     </a-scene>
 
     <script>
-        // Gesture handling for pinch zoom and drag
+        // Initialize camera
+        const cameraFeed = document.getElementById('camera-feed');
+        const loading = document.getElementById('loading');
+        const controls = document.getElementById('controls');
+        const instructions = document.getElementById('instructions');
+
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                cameraFeed.srcObject = stream;
+                cameraFeed.play();
+                
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                    controls.style.display = 'flex';
+                    instructions.style.display = 'block';
+                }, 1000);
+            } catch (err) {
+                console.error('Camera error:', err);
+                loading.textContent = 'Camera access denied. Please allow camera permission.';
+            }
+        }
+
+        // Start camera
+        initCamera();
+
+        // Gesture handling
         AFRAME.registerComponent('gesture-detector', {
             schema: {
                 enabled: {default: true}
@@ -189,14 +238,12 @@
                 event.preventDefault();
                 const touches = Array.from(event.touches);
                 
-                // Two finger pinch zoom
                 if (touches.length === 2 && this.touches.length === 2) {
                     const distance = this.getDistance(touches[0], touches[1]);
                     const scale = distance / this.initialDistance;
                     this.el.emit('pinch', {scale: scale});
                     this.initialDistance = distance;
                 }
-                // One finger drag
                 else if (touches.length === 1 && this.touches.length === 1) {
                     const deltaX = touches[0].clientX - this.touches[0].clientX;
                     const deltaY = touches[0].clientY - this.touches[0].clientY;
@@ -215,7 +262,6 @@
             }
         });
 
-        // Gesture handler for individual entities
         AFRAME.registerComponent('gesture-handler', {
             schema: {
                 enabled: {default: true},
@@ -238,44 +284,29 @@
                 this.el.sceneEl.addEventListener('drag', (event) => {
                     const container = document.querySelector('#video-container');
                     const position = container.getAttribute('position');
-                    // Move plane in 3D space based on drag
-                    position.x += event.detail.deltaX * 0.001;
-                    position.y -= event.detail.deltaY * 0.001;
+                    position.x += event.detail.deltaX * 0.002;
+                    position.y -= event.detail.deltaY * 0.002;
                     container.setAttribute('position', position);
                 });
             }
         });
 
         const video = document.querySelector('#video-texture');
-        const videoPlane = document.querySelector('#video-plane');
         const playBtn = document.querySelector('#playBtn');
         const rotateBtn = document.querySelector('#rotateBtn');
-        const loading = document.querySelector('#loading');
-        const controls = document.querySelector('#controls');
-        const instructions = document.querySelector('#instructions');
         let isPlaying = false;
         let isRotating = true;
 
         const scene = document.querySelector('a-scene');
         
-        // Wait for AR scene to load
         scene.addEventListener('loaded', function() {
-            setTimeout(() => {
-                loading.style.display = 'none';
-                controls.style.display = 'flex';
-                instructions.style.display = 'block';
-                console.log('AR Scene loaded');
-                
-                // Auto-play video
-                if (video.readyState >= 2) {
-                    playVideo();
-                }
-            }, 2000);
+            console.log('Scene loaded');
+            if (video.readyState >= 2) {
+                playVideo();
+            }
         });
 
-        // Video ready
         video.addEventListener('loadeddata', function() {
-            console.log('Video loaded');
             if (!isPlaying) {
                 playVideo();
             }
@@ -326,33 +357,23 @@
             const container = document.querySelector('#video-container');
             const plane = document.querySelector('#video-plane');
             
-            // Reset position
-            container.setAttribute('position', '0 0 -1');
-            
-            // Reset scale
+            container.setAttribute('position', '0 1.2 -1.5');
             plane.object3D.scale.set(1, 1, 1);
             const handler = plane.components['gesture-handler'];
             if (handler) {
                 handler.scaleFactor = 1;
             }
-            
-            // Reset rotation
             plane.setAttribute('rotation', '-15 0 0');
             
-            // Flash button
             const resetBtn = document.querySelector('#resetBtn');
             resetBtn.classList.add('active');
             setTimeout(() => resetBtn.classList.remove('active'), 500);
         }
 
-        // Handle errors
         video.addEventListener('error', function(e) {
             console.error('Video error:', e);
-            loading.textContent = 'Video loading error. Check file path.';
-            loading.style.display = 'block';
         });
 
-        // iOS touch to play
         document.addEventListener('touchstart', function() {
             if (!isPlaying && video.readyState >= 2) {
                 playVideo();
