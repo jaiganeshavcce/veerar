@@ -71,7 +71,7 @@
     <a-scene
         embedded
         vr-mode-ui="enabled: false"
-        renderer="antialias: true; colorManagement: true; sortObjects: true"
+        renderer="antialias: true; colorManagement: false"
         loading-screen="enabled: false">
         
         <a-assets>
@@ -97,7 +97,7 @@
             height="0.338"
             position="0 1.2 -1.5"
             rotation="-15 0 0"
-            material="shader: flat; src: #video-texture; side: double; transparent: false">
+            material="src: #video-texture; side: double">
         </a-plane>
 
         <!-- Lighting -->
