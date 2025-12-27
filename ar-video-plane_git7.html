@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
+    <title>AR Video Plane Experience</title>
+    
+    <!-- A-Frame and AR.js for AR capabilities -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        /* Controls Overlay */
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        .control-btn {
+            background: white;
+            border: 2px solid #667eea;
+            padding: 10px 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #667eea;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .control-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        /* Instructions */
+        .instructions {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            font-size: 14px;
+            z-index: 1000;
+            text-align: center;
+        }
+
+        /* Loading indicator */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 16px;
+            z-index: 2000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading screen -->
+    <div class="loading" id="loading">Loading AR Experience...</div>
+
+    <!-- Control Panel -->
+    <div class="controls" id="controls" style="display: none;">
+        <button class="control-btn active" id="playBtn" onclick="toggleVideo()">Play Video</button>
+        <button class="control-btn active" id="rotateBtn" onclick="toggleRotation()">Stop Rotation</button>
+        <button class="control-btn" id="resetBtn" onclick="resetCamera()">Reset View</button>
+    </div>
+
+    <!-- Instructions -->
+    <div class="instructions" id="instructions" style="display: none;">
+        Tap screen to place video plane • Use controls to play/pause
+    </div>
+
+    <!-- A-Frame Scene -->
+    <a-scene 
+        embedded
+        vr-mode-ui="enabled: false"
+        renderer="antialias: true; colorManagement: true; sortObjects: true;"
+        loading-screen="enabled: false">
+        
+        <!-- Video Asset -->
+        <a-assets timeout="10000">
+            <video 
+                id="video-texture" 
+                src="veer video.mp4" 
+                preload="auto" 
+                loop
+                muted
+                playsinline
+                webkit-playsinline
+                crossorigin="anonymous"
+                style="display: none;">
+            </video>
+        </a-assets>
+
+        <!-- Camera -->
+        <a-camera position="0 1.6 0" look-controls="enabled: true"></a-camera>
+
+        <!-- Video Plane Entity -->
+        <a-plane 
+            id="video-plane"
+            width="5.33"
+            height="3"
+            position="0 1.6 -3.5"
+            rotation="-15 0 0"
+            material="shader: flat; src: #video-texture; side: double; transparent: false"
+            animation__rotate="property: rotation; to: -15 360 0; loop: true; dur: 40000; easing: linear">
+        </a-plane>
+
+        <!-- Ambient Light -->
+        <a-entity light="type: ambient; intensity: 0.8"></a-entity>
+        
+        <!-- Directional Light -->
+        <a-entity light="type: directional; intensity: 0.5" position="-1 2 1"></a-entity>
+    </a-scene>
+
+    <script>
+        const video = document.querySelector('#video-texture');
+        const videoPlane = document.querySelector('#video-plane');
+        const playBtn = document.querySelector('#playBtn');
+        const rotateBtn = document.querySelector('#rotateBtn');
+        const loading = document.querySelector('#loading');
+        const controls = document.querySelector('#controls');
+        const instructions = document.querySelector('#instructions');
+        let isPlaying = false;
+        let isRotating = true;
+
+        // Wait for scene to load
+        const scene = document.querySelector('a-scene');
+        
+        // Hide loading screen after delay
+        setTimeout(() => {
+            loading.style.display = 'none';
+            controls.style.display = 'flex';
+            instructions.style.display = 'block';
+        }, 2000);
+        
+        scene.addEventListener('loaded', function() {
+            console.log('AR Scene loaded successfully');
+            
+            // Ensure video is ready
+            if (video.readyState >= 2) {
+                playVideo();
+            } else {
+                video.addEventListener('loadeddata', function() {
+                    playVideo();
+                }, { once: true });
+            }
+        });
+        
+        // Additional fallback to ensure video plays
+        video.addEventListener('canplaythrough', function() {
+            if (!isPlaying) {
+                playVideo();
+            }
+        }, { once: true });
+
+        // Video control function
+        function toggleVideo() {
+            if (isPlaying) {
+                pauseVideo();
+            } else {
+                playVideo();
+            }
+        }
+
+        function playVideo() {
+            video.muted = false; // Unmute when user interacts
+            video.play().then(() => {
+                isPlaying = true;
+                playBtn.textContent = 'Pause Video';
+                playBtn.classList.add('active');
+                console.log('Video playing');
+            }).catch(err => {
+                console.error('Video play error:', err);
+            });
+        }
+
+        function pauseVideo() {
+            video.pause();
+            isPlaying = false;
+            playBtn.textContent = 'Play Video';
+            playBtn.classList.remove('active');
+            console.log('Video paused');
+        }
+
+        // Toggle rotation
+        function toggleRotation() {
+            isRotating = !isRotating;
+            const plane = document.querySelector('#video-plane');
+            if (isRotating) {
+                plane.setAttribute('animation__rotate', 'property: rotation; to: -15 360 0; loop: true; dur: 40000; easing: linear');
+                rotateBtn.textContent = 'Stop Rotation';
+                rotateBtn.classList.add('active');
+            } else {
+                plane.removeAttribute('animation__rotate');
+                rotateBtn.textContent = 'Start Rotation';
+                rotateBtn.classList.remove('active');
+            }
+        }
+
+        // Reset camera view
+        function resetCamera() {
+            const camera = document.querySelector('a-camera');
+            if (camera) {
+                camera.setAttribute('position', '0 1.6 0');
+                camera.setAttribute('rotation', '0 0 0');
+            }
+            
+            const resetBtn = document.querySelector('#resetBtn');
+            resetBtn.classList.add('active');
+            setTimeout(() => resetBtn.classList.remove('active'), 500);
+        }
+
+        // Handle video errors
+        video.addEventListener('error', function(e) {
+            console.error('Video loading error:', e);
+            loading.textContent = 'Error loading video. Check file path.';
+            loading.style.display = 'block';
+        });
+
+        // Video events for debugging
+        video.addEventListener('loadeddata', function() {
+            console.log('Video data loaded');
+        });
+
+        video.addEventListener('canplay', function() {
+            console.log('Video can play');
+        });
+
+        // iOS requires user interaction for video
+        document.addEventListener('touchstart', function() {
+            if (!isPlaying) {
+                playVideo();
+            }
+        }, { once: true });
+    </script>
+</body>
+</html>
