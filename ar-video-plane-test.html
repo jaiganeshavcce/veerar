@@ -12,6 +12,7 @@
         body {
             margin: 0;
             overflow: hidden;
+            background: black;
         }
 
         /* Camera background */
@@ -22,7 +23,21 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            z-index: -1;
+            z-index: 1;
+        }
+
+        /* Make A-Frame canvas transparent */
+        a-scene {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+
+        .a-canvas {
+            background: transparent !important;
         }
 
         .controls {
@@ -243,10 +258,7 @@
             
             if (isRotating) {
                 // Stop rotation
-                if (rotationAnimation) {
-                    rotationAnimation.pause();
-                    rotationAnimation = null;
-                }
+                videoPlane.removeAttribute('animation');
                 isRotating = false;
                 rotateBtn.innerHTML = '▶ Rotate';
                 rotateBtn.classList.remove('active');
