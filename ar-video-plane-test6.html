@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR Video Plane Test</title>
+    
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <!-- AR.js for camera access -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 15px;
+            border-radius: 20px;
+            z-index: 10000;
+        }
+
+        .control-btn {
+            background: white;
+            border: 2px solid #667eea;
+            padding: 8px 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            color: #667eea;
+        }
+
+        .control-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .debug {
+            position: fixed;
+            top: 80px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            font-size: 11px;
+            z-index: 10000;
+            max-width: 300px;
+            display: none;  /* HIDDEN - keeps functionality but not visible */
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button class="control-btn active" id="playBtn" onclick="toggleVideo()">⏸ Pause</button>
+        <button class="control-btn" id="rotateBtn" onclick="toggleRotation()">▶ Rotate</button>
+        <button class="control-btn" id="resetBtn" onclick="resetPlane()">↻ Reset</button>
+    </div>
+
+    <div class="debug" id="debug">Initializing...</div>
+
+    <!-- A-Frame Scene with AR.js embedded mode for camera -->
+    <a-scene
+        embedded
+        vr-mode-ui="enabled: false"
+        renderer="antialias: true; colorManagement: false"
+        loading-screen="enabled: false">
+        
+        <a-assets>
+            <video 
+                id="video-texture" 
+                src="veer_video.mp4" 
+                preload="auto" 
+                loop
+                muted
+                playsinline
+                webkit-playsinline
+                crossorigin="anonymous">
+            </video>
+        </a-assets>
+
+        <!-- Camera -->
+        <a-camera position="0 1.6 0" look-controls></a-camera>
+
+        <!-- Video Plane - Reduced size for comfortable viewing -->
+        <a-plane 
+            id="video-plane"
+            width="0.6"
+            height="0.338"
+            position="0 1.2 -1.5"
+            rotation="-15 0 0"
+            material="src: #video-texture; side: double">
+        </a-plane>
+
+        <!-- Lighting -->
+        <a-entity light="type: ambient; intensity: 0.8"></a-entity>
+        <a-entity light="type: directional; intensity: 0.6" position="1 2 1"></a-entity>
+        
+    </a-scene>
+
+    <script>
+        const video = document.querySelector('#video-texture');
+        const playBtn = document.querySelector('#playBtn');
+        const rotateBtn = document.querySelector('#rotateBtn');
+        const debugEl = document.querySelector('#debug');
+        let isPlaying = false;
+        let isRotating = false;
+        let debugInfo = [];
+
+        function updateDebug(msg) {
+            debugInfo.push(msg);
+            if (debugInfo.length > 10) debugInfo.shift();
+            debugEl.innerHTML = debugInfo.join('<br>');
+            console.log(msg);
+        }
+
+        const scene = document.querySelector('a-scene');
+        
+        scene.addEventListener('loaded', function() {
+            updateDebug('✓ Scene loaded');
+            
+            const videoPlane = document.querySelector('#video-plane');
+            updateDebug(`Video plane visible: ${videoPlane.getAttribute('visible')}`);
+            
+            if (video.readyState >= 2) {
+                playVideo();
+            }
+        });
+
+        video.addEventListener('loadeddata', function() {
+            updateDebug(`✓ Video loaded (${video.videoWidth}x${video.videoHeight})`);
+            if (!isPlaying) {
+                playVideo();
+            }
+        });
+
+        video.addEventListener('canplay', function() {
+            updateDebug('✓ Video can play');
+        });
+
+        video.addEventListener('playing', function() {
+            updateDebug('✓ Video is playing');
+        });
+
+        video.addEventListener('error', function(e) {
+            updateDebug('✗ Video error: ' + e.message);
+        });
+
+        function toggleVideo() {
+            if (isPlaying) {
+                pauseVideo();
+            } else {
+                playVideo();
+            }
+        }
+
+        function playVideo() {
+            video.muted = false;
+            video.play().then(() => {
+                isPlaying = true;
+                playBtn.innerHTML = '⏸ Pause';
+                playBtn.classList.add('active');
+                updateDebug('▶ Play triggered');
+            }).catch(err => {
+                updateDebug('✗ Play error: ' + err.message);
+            });
+        }
+
+        function pauseVideo() {
+            video.pause();
+            isPlaying = false;
+            playBtn.innerHTML = '▶ Play';
+            playBtn.classList.remove('active');
+            updateDebug('⏸ Paused');
+        }
+
+        function toggleRotation() {
+            const videoPlane = document.querySelector('#video-plane');
+            
+            if (isRotating) {
+                // Stop rotation
+                videoPlane.removeAttribute('animation');
+                isRotating = false;
+                rotateBtn.innerHTML = '▶ Rotate';
+                rotateBtn.classList.remove('active');
+                updateDebug('⏸ Rotation stopped');
+            } else {
+                // Start rotation
+                const currentRotation = videoPlane.getAttribute('rotation');
+                videoPlane.setAttribute('animation', {
+                    property: 'rotation',
+                    from: `${currentRotation.x} ${currentRotation.y} ${currentRotation.z}`,
+                    to: `${currentRotation.x} ${currentRotation.y + 360} ${currentRotation.z}`,
+                    dur: 40000,
+                    loop: true,
+                    easing: 'linear'
+                });
+                isRotating = true;
+                rotateBtn.innerHTML = '⏸ Stop';
+                rotateBtn.classList.add('active');
+                updateDebug('▶ Rotation started (40s per cycle)');
+            }
+        }
+
+        function resetPlane() {
+            const videoPlane = document.querySelector('#video-plane');
+            
+            // Stop rotation if active
+            if (isRotating) {
+                toggleRotation();
+            }
+            
+            // Reset position and rotation
+            videoPlane.removeAttribute('animation');
+            videoPlane.setAttribute('position', '0 1.2 -1.5');
+            videoPlane.setAttribute('rotation', '-15 0 0');
+            updateDebug('↻ Reset to default');
+        }
+
+        document.addEventListener('touchstart', function() {
+            if (!isPlaying && video.readyState >= 2) {
+                playVideo();
+            }
+        }, { once: true });
+
+        // Check video element state periodically
+        setInterval(() => {
+            if (video) {
+                const state = `Ready:${video.readyState} Paused:${video.paused}`;
+                if (debugInfo[debugInfo.length - 1] !== state) {
+                    updateDebug(state);
+                }
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
